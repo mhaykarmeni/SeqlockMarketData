@@ -51,7 +51,6 @@ SeqlockMarketData/
 
 ```cpp
 template<typename T>
-    requires std::is_trivially_copyable_v<T>
 class Seqlock {
 public:
     // Publish a new value. Only one thread may call this at a time.
