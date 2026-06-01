@@ -15,7 +15,7 @@ public:
         m_counter.store(curr + 1, std::memory_order_relaxed);
         std::atomic_thread_fence(std::memory_order_release);
         //this memcpy of non-atomic is theoretically open door to data-race/UB, but it works practically
-        std::memcpy(static_cast<void*>(&m_value), static_cast<const void*>(&val), sizeof(T));
+        std::memcpy(static_cast<void*>(&m_data), static_cast<const void*>(&val), sizeof(T));
         std::atomic_thread_fence(std::memory_order_release);
         m_counter.store(curr + 2, std::memory_order_relaxed);
     }
@@ -30,7 +30,7 @@ public:
             }
             T val{};
             std::atomic_thread_fence(std::memory_order_acquire);
-            std::memcpy(static_cast<void*>(&val), static_cast<const void*>(&m_value), sizeof(T));
+            std::memcpy(static_cast<void*>(&val), static_cast<const void*>(&m_data), sizeof(T));
             std::atomic_thread_fence(std::memory_order_acquire);
             const uint64_t currState2 = m_counter.load(std::memory_order_acquire);
             if(currState1 != currState2) {
@@ -40,6 +40,6 @@ public:
         }
     }
 private:
-    alignas(64) T m_value;
+    alignas(64) T m_data;
     alignas(64) std::atomic<uint64_t> m_counter{};
 };

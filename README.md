@@ -14,14 +14,14 @@ A seqlock uses a single `uint64_t` sequence counter shared between writer and re
 - **Odd** value → write in progress; data may be mid-update.
 
 **Writer** protocol:
-1. Increment seq (even → odd) — signals write has started.
+1. Increment counter (even → odd) — signals write has started.
 2. Copy data into the shared slot.
-3. Increment seq (odd → even) — signals write is complete.
+3. Increment counter (odd → even) — signals write is complete.
 
 **Reader** protocol:
-1. Load seq into `s1`. If odd, spin (writer is active).
+1. Load counter into `s1`. If odd, spin (writer is active).
 2. Copy data out of the shared slot.
-3. Load seq into `s2`. If `s1 != s2`, a write raced the copy — retry from step 1.
+3. Load counter into `s2`. If `s1 != s2`, a write raced the copy — retry from step 1.
 4. Data is consistent.
 
 Readers never block the writer. Multiple readers never block each other.
@@ -63,11 +63,11 @@ public:
 
 **Requirements on `T`**: trivially copyable (POD structs, scalars). The implementation copies `T` with `std::memcpy`.
 
-**Memory ordering**: The writer must bracket the data copy with release fences so the data stores cannot straddle the seq increments. The reader must use an acquire load on `s1` and an acquire fence before reading `s2` so neither seq load can slip past the data copy.
+**Memory ordering**: The writer must bracket the data copy with release fences so the data stores cannot straddle the counter increments. The reader must use an acquire load on `s1` and an acquire fence before reading `s2` so neither counter load can slip past the data copy.
 
 **Spin hint**: On x86 use `_mm_pause()` inside the spin loop; on AArch64 use `yield`. Both reduce power consumption and branch mispredictions in tight spin loops.
 
-**Cache layout**: Separate `seq` and `data` onto different cache lines to prevent false sharing between the writer updating `seq` and readers reading `data`.
+**Cache layout**: Separate `counter` and `data` onto different cache lines to prevent false sharing between the writer updating `counter` and readers reading `data`.
 
 ---
 
