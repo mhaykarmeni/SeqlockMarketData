@@ -20,6 +20,11 @@ target_link_libraries(seqlock INTERFACE Threads::Threads)
 
 enable_testing()
 
+# --- Demo ----------------------------------------------------------------
+add_executable(seqlock_demo src/main.cpp)
+target_link_libraries(seqlock_demo PRIVATE seqlock)
+target_compile_options(seqlock_demo PRIVATE -Wall -Wextra)
+
 # --- Tests ---------------------------------------------------------------
 add_executable(seqlock_test tests/seqlock_test.cpp)
 target_link_libraries(seqlock_test PRIVATE seqlock)
