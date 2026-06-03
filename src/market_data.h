@@ -1,4 +1,6 @@
 #pragma once
+#include <shared_mutex>
+#include <mutex>
 #include "seqlock.h"
 
 struct Quote {
@@ -26,6 +28,15 @@ private:
 
 class MarketDataCacheMtx {
 public:
-    void  publish(const Quote& q);
-    [[nodiscard]] Quote latest() const;
+    void publish(const Quote& q) {
+        std::unique_lock lock(m_mtx);
+        m_data = q;
+    }
+    [[nodiscard]] Quote latest() const {
+        std::shared_lock lock(m_mtx);
+        return m_data;
+    }
+private:
+    mutable std::shared_mutex m_mtx;
+    Quote m_data{};
 };
