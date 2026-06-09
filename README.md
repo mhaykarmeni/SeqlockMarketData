@@ -125,12 +125,16 @@ The writer always publishes `bid < ask`. A reader that ever observes `bid >= ask
 ## Build
 
 ```bash
-# Tests only
+# Tests
 cmake -S . -B build -DCMAKE_BUILD_TYPE=Release
 cmake --build build -j$(nproc)
 ctest --test-dir build --output-on-failure
 
-# With benchmarks
+# Demo (1 writer + N readers, asserts bid < ask)
+cmake --build build --target seqlock_demo
+./build/seqlock_demo
+
+# Benchmark (seqlock vs shared_mutex)
 cmake -S . -B build-release -DCMAKE_BUILD_TYPE=Release -DSEQLOCK_BUILD_BENCH=ON
 cmake --build build-release -j$(nproc)
 ./build-release/seqlock_bench
@@ -138,11 +142,33 @@ cmake --build build-release -j$(nproc)
 
 ---
 
-## Expected characteristics
+## Measured results
 
-| Scenario | Seqlock | `shared_mutex` |
+Numbers below are from `seqlock_bench` on a 7-core machine (`-O2`, Release).
+Run `./build-release/seqlock_bench` to reproduce on your own hardware.
+
+### Read latency
+
+| Scenario | Seqlock | `shared_mutex` | Speedup |
+|---|---|---|---|
+| Uncontended read (1 reader) | **1.46 ns/op** | 14.59 ns/op | ~10× |
+| Read under active writer (6 readers + 1 writer) | **77.5 Mops/s** | 8.8 Mops/s | ~9× |
+
+### Reader scaling (no writer, aggregate throughput)
+
+| Readers | Seqlock | `shared_mutex` |
 |---|---|---|
-| Uncontended read | ~5 ns | ~20–40 ns |
-| Read under active writer | ~5–15 ns (retry) | ~20–40 ns (queued) |
+| 1 | 673 Mops/s | 58 Mops/s |
+| 2 | 1213 Mops/s | 15 Mops/s |
+| 4 | 2027 Mops/s | 10 Mops/s |
+
+The seqlock scales **~linearly** with readers (no reader↔reader contention),
+while `shared_mutex` throughput *degrades* as readers are added — every reader
+still mutates the lock's shared reader-count, so they contend on that cache line.
+
+### Qualitative properties
+
+| Property | Seqlock | `shared_mutex` |
+|---|---|---|
 | Readers scale with N | Yes — no reader↔reader contention | No — shared lock degrades |
 | Writer blocks on readers | Never | Yes |
